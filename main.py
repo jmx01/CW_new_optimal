@@ -7,7 +7,7 @@ import time
 import matplotlib.pyplot as plt
 
 CAR_MAX = 250  # 车的容量
-ITERATION = 1  # 最大迭代次数
+ITERATION = 180  # 最大迭代次数
 M = 1000000  # 一个很大的数
 
 dt = pd.read_excel("./data.xlsx")  # 复制数据
@@ -145,15 +145,17 @@ def desolve(solve, C=C):
     :param C: 距离矩阵
     :return: 总距离total_distance
     """
-    total_distance = len(solve) * 100
+    total_use = len(solve) * 100
+    total_distance = 0
     for i in range(len(solve)):
         row_distance = 0
         for j in range(len(solve[i][0]) - 1):
             row_distance = row_distance + C[solve[i][0][j]][solve[i][0][j + 1]]
         solve[i].append(row_distance)
         total_distance += row_distance
+    total_use += total_distance
 
-    return total_distance, solve
+    return total_use, total_distance, solve
 
 
 def deal_solve(solve_k, data_e=data_e):
@@ -198,9 +200,9 @@ def solve_plot(solve, data_e=data_e):
 
 def initial():
     solve_greedy = saving()
-    total_distance, initial_solve = desolve(solve_greedy)
+    total_use, total_distance, initial_solve = desolve(solve_greedy)
     solve_plot(initial_solve)
-    return total_distance, initial_solve
+    return total_use, total_distance, initial_solve
 
 
 def solve_to_list(solve):
@@ -255,23 +257,77 @@ def list_to_solve(new, datacon=data_con):
         new_in.insert(0, 0)
         solve.append([new_in, sum(datacon[new[int(each[0]):int(each[1] + 1)]])])
 
-    distance, solve = desolve(solve)
-    return distance, solve
+    use, distance, solve = desolve(solve)
+    return use, distance, solve
 
 
-def SA_optimal(total_distance, initial_solve, datacon=data_con):
+def random_int_list(start, stop, length):
+    start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
+    length = int(abs(length)) if length > 0 else 0
+    random_list = []
+    while len(random_list) < length:
+        new = random.randint(start, stop)
+        if new not in random_list:
+            random_list.append(new)
+
+    return random_list
+
+
+def SA(new, optimal, T):
+    prob = math.exp((optimal - new) / T)
+    yi = random.random()
+    return prob > yi
+
+
+def SA_optimal(datacon=data_con):
     """
     模拟退火算法
-    :param total_distance: 初始化的距离值
-    :param initial_solve: 初始解
     :param datacon: 装载量
     :return: 优化解
     """
-    optimal_solve = copy.deepcopy(initial_solve)
-    optimal_distance = copy.deepcopy(total_distance)
     optimal_distance_vector = []
 
-    return optimal_distance, optimal_solve, optimal_distance_vector
+    arr = np.arange(1, len(datacon))
+    np.random.shuffle(arr)
+    arr = list(arr)
+    optimal_use, optimal_distance, optimal_solve = list_to_solve(arr)
+    optimal_list = copy.deepcopy(arr)
+
+    T = 110  # 温度
+    ITERATION_IN = 100  # 内部循环
+    delta_T = T / ITERATION
+    random_num = 5
+
+    new_list = copy.deepcopy(optimal_list)
+    for i in range(ITERATION):
+        print(i)
+        for j in range(ITERATION_IN):
+            change_point = np.array(random_int_list(0, len(datacon) - 2, random_num))
+            new_get = []
+            for x in change_point:
+                new_get.append(copy.deepcopy(new_list[x]))
+                new_list[x] = M
+
+            new_point = np.random.permutation(change_point)
+            for k in range(random_num):
+                for l in range(random_num):
+                    if change_point[k] == new_point[l]:
+                        new_list[change_point[k]] = new_get[l]
+
+            new_use, new_distance, new_solve = list_to_solve(new_list)
+
+            if new_use < optimal_use:
+                optimal_solve = new_solve
+                optimal_use = new_use
+                optimal_distance = new_distance
+            elif new_use > optimal_use and SA(new_use, optimal_use, T):
+                optimal_solve = new_solve
+                optimal_use = new_use
+                optimal_distance = new_distance
+
+        T -= delta_T
+
+    return optimal_use, optimal_distance, optimal_solve, optimal_distance_vector
 
 
 # def test_optimal_solve(optimal_solve, out_k, in_k, out_point, in_point):
@@ -330,17 +386,19 @@ def SA_optimal(total_distance, initial_solve, datacon=data_con):
 
 def main():
     start = time.time()
-    total_distance, initial_solve = initial()
-    optimal_distance, optimal_solve, optimal_distance_vector = SA_optimal(total_distance, initial_solve)
+    total_use, total_distance, initial_solve = initial()
+    optimal_use, optimal_distance, optimal_solve, optimal_distance_vector = SA_optimal()
 
     # solve_plot(optimal_solve)  # 绘制vrp图
     # plt.plot(range(ITERATION), optimal_distance_vector)  # 绘制迭代图
     # plt.show()
 
     end = time.time()
-    print("总迭代数为", ITERATION, "，", "节约算法花费为", total_distance, "优化花费为", optimal_distance, "耗费时间为",
-          end - start, "秒，", "平均耗时",
-          (end - start) / ITERATION, "秒。")
+    print("总迭代数为", ITERATION, "\n", "节约算法花费为", total_use, "节约算法路径", total_distance, "\n"
+                                                                                                      "优化花费为",
+          optimal_use, "优化路径",
+          optimal_distance, "\n"
+                            "耗费时间为", end - start, "秒，", "平均耗时", (end - start) / ITERATION, "秒。")
     print("saving算法的解：", end="\n")
     for i in initial_solve:
         print(i, end="\n")
