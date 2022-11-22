@@ -274,28 +274,28 @@ def SA_optimal(total_distance, initial_solve, datacon=data_con):
     return optimal_distance, optimal_solve, optimal_distance_vector
 
 
-def test_optimal_solve(optimal_solve, out_k, in_k, out_point, in_point):
-    """
-    更新距离用
-    :param optimal_solve:原解
-    :param out_k:取元素的子解
-    :param in_k:放元素的子解
-    :param out_point:取元素的位置
-    :param in_point:放元素的位置
-    :return: 新解，已更新距离
-    """
-    test = copy.deepcopy(optimal_solve)
-
-    test[in_k][1] += data_con[test[out_k][0][out_point]]  # 更新装载量
-    test[out_k][1] -= data_con[test[out_k][0][out_point]]
-
-    test[in_k][0].insert(in_point, test[out_k][0][out_point])  # 增删元素
-    del test[out_k][0][out_point]
-
-    for c in test:  # 删去最后的距离量
-        c.pop()
-
-    return test
+# def test_optimal_solve(optimal_solve, out_k, in_k, out_point, in_point):
+#     """
+#     更新距离用
+#     :param optimal_solve:原解
+#     :param out_k:取元素的子解
+#     :param in_k:放元素的子解
+#     :param out_point:取元素的位置
+#     :param in_point:放元素的位置
+#     :return: 新解，已更新距离
+#     """
+#     test = copy.deepcopy(optimal_solve)
+#
+#     test[in_k][1] += data_con[test[out_k][0][out_point]]  # 更新装载量
+#     test[out_k][1] -= data_con[test[out_k][0][out_point]]
+#
+#     test[in_k][0].insert(in_point, test[out_k][0][out_point])  # 增删元素
+#     del test[out_k][0][out_point]
+#
+#     for c in test:  # 删去最后的距离量
+#         c.pop()
+#
+#     return test
 
 
 # def optimal(total_distance, initial_solve, datacon=data_con):
