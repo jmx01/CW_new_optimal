@@ -333,9 +333,9 @@ def main():
     total_distance, initial_solve = initial()
     optimal_distance, optimal_solve, optimal_distance_vector = SA_optimal(total_distance, initial_solve)
 
-    solve_plot(optimal_solve)  # 绘制vrp图
-    plt.plot(range(ITERATION), optimal_distance_vector)  # 绘制迭代图
-    plt.show()
+    # solve_plot(optimal_solve)  # 绘制vrp图
+    # plt.plot(range(ITERATION), optimal_distance_vector)  # 绘制迭代图
+    # plt.show()
 
     end = time.time()
     print("总迭代数为", ITERATION, "，", "节约算法花费为", total_distance, "优化花费为", optimal_distance, "耗费时间为",
