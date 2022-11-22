@@ -7,11 +7,13 @@ import time
 import matplotlib.pyplot as plt
 
 CAR_MAX = 250  # 车的容量
-ITERATION = 100000  # 最大迭代次数
+ITERATION = 1  # 最大迭代次数
+M = 1000000  # 一个很大的数
 
 dt = pd.read_excel("./data.xlsx")  # 复制数据
 data_e = np.array(dt.iloc[:, 1:3])  # 单独取出坐标
-data_con = np.array(dt.iloc[:, 3])  # 客户点的量  0 - 70  data_con[k]即为第k个点的装载量
+data_con = np.array(dt.iloc[:, 3])  # 客户点的量  0 - 120  data_con[k]即为第k个点的装载量
+MIN_CAR = data_con.sum() // CAR_MAX + 1  # 完成装载最少的车辆数
 
 C = np.zeros([data_e.shape[0], data_e.shape[0]])  # 距离矩阵，创建零矩阵
 for i in range(C.shape[0]):
@@ -226,8 +228,70 @@ def test_optimal_solve(optimal_solve, out_k, in_k, out_point, in_point):
 
 
 def SA(T, Z_new, Z_optimal):
-    prob = math.exp((Z_optimal - Z_new)/100 * (T+1))
+    prob = math.exp((Z_optimal - Z_new) * (T + 1))
     return prob > random.random()
+
+
+def solve_to_list(solve):
+    solve_new = copy.deepcopy(solve)
+    now_list = []
+    for each in solve_new:
+        each[0].pop()
+        each[0].pop(0)
+        now_list.extend(each[0])
+    return now_list
+
+
+def list_to_solve(new, datacon=data_con):
+    solve = []
+    A = np.full(len(new) * len(new), M, dtype=int).reshape(len(new), len(new))
+    for i in range(len(new)):
+        for j in range(i, len(new)):
+            vec = copy.deepcopy(new[i:j + 1])
+            if sum(datacon[vec]) <= CAR_MAX:
+                vec.insert(0, 0)
+                vec.insert(len(vec), 0)
+                A[i, j] = 0
+                for x in range(len(vec) - 1):
+                    A[i, j] += C[vec[x], vec[x + 1]]
+
+    vec = [A[0][0]]
+    for i in range(len(new)-1):
+        vec.append(vec[i]+A[i+1][i+1])
+
+    for i in range(len(new)):
+        j = i
+        while A[i][j] != M:
+            if vec[i] > A[i][j] + vec[j - i]:
+                vec[i] = A[i][j] + vec[j - i]
+
+            if j != len(new) - 1:
+                j += 1
+            else:
+                break
+
+    return A, solve
+
+
+total_distance, initial_solve = initial()
+x = solve_to_list(initial_solve)
+A, solve = list_to_solve(x)
+c = 1
+
+
+def SA_optimal(total_distance, initial_solve, datacon=data_con):
+    """
+    模拟退火算法
+    :param total_distance: 初始化的距离值
+    :param initial_solve: 初始解
+    :param datacon: 装载量
+    :return: 优化解
+    """
+    optimal_solve = copy.deepcopy(initial_solve)
+    optimal_distance = copy.deepcopy(total_distance)
+    optimal_distance_vector = []
+
+    return optimal_distance, optimal_solve, optimal_distance_vector
 
 
 def optimal(total_distance, initial_solve, datacon=data_con):
@@ -253,9 +317,6 @@ def optimal(total_distance, initial_solve, datacon=data_con):
 
             test_distance, test = desolve(test)  # 总路程，重新生成有距离的矩阵
             if test_distance < optimal_distance:
-                optimal_distance = test_distance
-                optimal_solve = test
-            elif test_distance > optimal_distance and SA(i,  test_distance, optimal_distance):
                 optimal_distance = test_distance
                 optimal_solve = test
         i += 1
