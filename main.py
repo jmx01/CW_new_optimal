@@ -227,11 +227,6 @@ def test_optimal_solve(optimal_solve, out_k, in_k, out_point, in_point):
     return test
 
 
-def SA(T, Z_new, Z_optimal):
-    prob = math.exp((Z_optimal - Z_new) * (T + 1))
-    return prob > random.random()
-
-
 def solve_to_list(solve):
     solve_new = copy.deepcopy(solve)
     now_list = []
@@ -256,27 +251,36 @@ def list_to_solve(new, datacon=data_con):
                     A[i, j] += C[vec[x], vec[x + 1]]
 
     vec = [A[0][0]]
-    for i in range(len(new)-1):
-        vec.append(vec[i]+A[i+1][i+1])
+    v = np.zeros(len(new))
+    for i in range(len(new) - 1):
+        vec.append(vec[i] + A[i + 1][i + 1])
 
-    for i in range(len(new)):
-        j = i
-        while A[i][j] != M:
-            if vec[i] > A[i][j] + vec[j - i]:
-                vec[i] = A[i][j] + vec[j - i]
+    for j in range(len(new) - 1):
+        i = j
+        while A[i][j + 1] != M:
+            if vec[j + 1] > A[i + 1][j + 1] + vec[i]:
+                vec[j + 1] = A[i + 1][j + 1] + vec[i]
+                v[j + 1] = i
 
-            if j != len(new) - 1:
-                j += 1
+            if i != 0 and A[i][j + 1] != M:
+                i -= 1
             else:
                 break
 
-    return A, solve
+    k = len(new)
+    to_find = []
+    while k != 0:
+        to_find.insert(0, [v[int(k - 1)], int(k - 1)])
+        k = v[int(k - 1)]
 
+    for each in to_find:
+        new_in = copy.deepcopy(new[int(each[0]):int(each[1] + 1)])
+        new_in.append(0)
+        new_in.insert(0, 0)
+        solve.append([new_in, sum(datacon[new[int(each[0]):int(each[1] + 1)]])])
 
-total_distance, initial_solve = initial()
-x = solve_to_list(initial_solve)
-A, solve = list_to_solve(x)
-c = 1
+    distance, solve = desolve(solve)
+    return distance, solve
 
 
 def SA_optimal(total_distance, initial_solve, datacon=data_con):
@@ -294,40 +298,40 @@ def SA_optimal(total_distance, initial_solve, datacon=data_con):
     return optimal_distance, optimal_solve, optimal_distance_vector
 
 
-def optimal(total_distance, initial_solve, datacon=data_con):
-    """
-    优化算法
-    :param total_distance: 初始化的距离值
-    :param initial_solve: 初始解
-    :param datacon: 装载量
-    :return: 优化解
-    """
-    optimal_solve = copy.deepcopy(initial_solve)
-    optimal_distance = copy.deepcopy(total_distance)
-    optimal_distance_vector = []
-    for i in range(ITERATION):
-        solve_out_index, solve_in_index = random.sample(range(len(optimal_solve)), 2)  # 选某两个子解
-        out_point_index, in_point_index = random.randint(1, len(optimal_solve[solve_out_index][0]) - 2), random.randint(
-            1, len(optimal_solve[solve_in_index][0]) - 1)  # 选择这两个解的取出和放置点
-
-        if datacon[optimal_solve[solve_out_index][0][out_point_index]] + optimal_solve[solve_in_index][1] < CAR_MAX:
-
-            test = test_optimal_solve(optimal_solve, solve_out_index, solve_in_index, out_point_index,
-                                      in_point_index)
-
-            test_distance, test = desolve(test)  # 总路程，重新生成有距离的矩阵
-            if test_distance < optimal_distance:
-                optimal_distance = test_distance
-                optimal_solve = test
-        i += 1
-        optimal_distance_vector.append(optimal_distance)
-    return optimal_distance, optimal_solve, optimal_distance_vector
+# def optimal(total_distance, initial_solve, datacon=data_con):
+#     """
+#     优化算法
+#     :param total_distance: 初始化的距离值
+#     :param initial_solve: 初始解
+#     :param datacon: 装载量
+#     :return: 优化解
+#     """
+#     optimal_solve = copy.deepcopy(initial_solve)
+#     optimal_distance = copy.deepcopy(total_distance)
+#     optimal_distance_vector = []
+#     for i in range(ITERATION):
+#         solve_out_index, solve_in_index = random.sample(range(len(optimal_solve)), 2)  # 选某两个子解
+#         out_point_index, in_point_index = random.randint(1, len(optimal_solve[solve_out_index][0]) - 2), random.randint(
+#             1, len(optimal_solve[solve_in_index][0]) - 1)  # 选择这两个解的取出和放置点
+#
+#         if datacon[optimal_solve[solve_out_index][0][out_point_index]] + optimal_solve[solve_in_index][1] < CAR_MAX:
+#
+#             test = test_optimal_solve(optimal_solve, solve_out_index, solve_in_index, out_point_index,
+#                                       in_point_index)
+#
+#             test_distance, test = desolve(test)  # 总路程，重新生成有距离的矩阵
+#             if test_distance < optimal_distance:
+#                 optimal_distance = test_distance
+#                 optimal_solve = test
+#         i += 1
+#         optimal_distance_vector.append(optimal_distance)
+#     return optimal_distance, optimal_solve, optimal_distance_vector
 
 
 def main():
     start = time.time()
     total_distance, initial_solve = initial()
-    optimal_distance, optimal_solve, optimal_distance_vector = optimal(total_distance, initial_solve)
+    optimal_distance, optimal_solve, optimal_distance_vector = SA_optimal(total_distance, initial_solve)
 
     solve_plot(optimal_solve)  # 绘制vrp图
     plt.plot(range(ITERATION), optimal_distance_vector)  # 绘制迭代图
